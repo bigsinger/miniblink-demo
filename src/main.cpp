@@ -1,5 +1,6 @@
-﻿#include <iostream>
-#include "mb.h"
+﻿#include "mb.h"
+#include <vector>
+#include <iostream>
 
 
 /////////////////////////////////////////
@@ -24,6 +25,36 @@
 
 const char TestUrl[] = "https://miniblink.net/views/doc/index.html";
 /////////////////////////////////////////
+
+
+
+
+std::string utf16ToUtf8(LPCWSTR lpszSrc) {
+    std::string sResult;
+    if (lpszSrc != NULL) {
+        int  nUTF8Len = WideCharToMultiByte(CP_UTF8, 0, lpszSrc, -1, NULL, 0, NULL, NULL);
+        char* pUTF8 = new char[nUTF8Len + 1];
+        if (pUTF8 != NULL) {
+            ZeroMemory(pUTF8, nUTF8Len + 1);
+            WideCharToMultiByte(CP_UTF8, 0, lpszSrc, -1, pUTF8, nUTF8Len, NULL, NULL);
+            sResult = pUTF8;
+            delete[] pUTF8;
+        }
+    }
+    return sResult;
+}
+
+std::wstring utf8ToUtf16(const std::string& utf8) {
+    std::wstring utf16;
+    size_t n = ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), nullptr, 0);
+    if (0 == n)
+        return L"";
+    std::vector<wchar_t> wbuf(n);
+    ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), &wbuf[0], (int)n);
+    utf16.resize(n + 5);
+    utf16.assign(&wbuf[0], n);
+    return utf16;
+}
 
 
 
@@ -52,6 +83,8 @@ BOOL MB_CALL_TYPE onCloseCallback(mbWebView webView, void* param, void* unuse) {
 // 执行JS的回调函数
 void MB_CALL_TYPE onRunJsCallback(mbWebView webView, void* param, mbJsExecState es, mbJsValue v) {
     printf("onRunJsCallback\n");
+    const utf8* str = mbJsToString(es, v);
+	printf("%s\n", str);
 }
 
 // 页面DOM发出ready事件时触发此回调
@@ -62,7 +95,7 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
     mbStringPtr ptr = mbGetSourceSync(mbView);
 	auto len = mbGetStringLen(ptr);
     auto html = mbGetString(ptr);
-	printf("Document ready, HTML length: %zu %d\n", len, strlen(html));
+	printf("Document ready, HTML length: %zu %zu\n", len, strlen(html));
     mbDeleteString(ptr);
 
 	// 执行一段JS测试代码
@@ -70,7 +103,10 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
         R"(
         try {
             console.log('hello js');
-            console.log2('');
+            var ret = window.mbQuery(0x123456, "I am in js context");
+            alert(ret);
+            //return window.onNativeRunjs('I am runjs');
+            //console.log2('');
         } catch(e){
             alert(e);
         }
@@ -78,13 +114,37 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
         true, onRunJsCallback, nullptr, nullptr);
 }
 
+void MB_CALL_TYPE onLoadingFinish(mbWebView webView, void* param, mbWebFrameHandle frameId, const utf8* url, mbLoadingResult result, const utf8* failedReason) {
+    //if(result == MB_LOADING_SUCCEEDED)
+    //::mbNetGetFavicon(webView, HandleFaviconReceived, param);
+    printf("onLoadingFinish\n");
+}
+
 void MB_CALL_TYPE onJsQueryCallback(mbWebView webView, void* param, mbJsExecState es, int64_t queryId, int customMsg, const utf8* request) {
     printf("onJsQueryCallback\n");
+    if (customMsg== 0x123456) {
+        mbResponseQuery(webView, queryId, customMsg, "I am response");
+    }
 }
 
 BOOL MB_CALL_TYPE onLoadUrlBegin(mbWebView webView, void* param, const char* url, mbNetJob job) {
     printf("onLoadUrlBegin\n");
     return false;
+}
+
+void MB_CALL_TYPE onLoadUrlEnd
+(mbWebView webView, void* param, const char* url, void* job, void* buf, int len) {
+    printf("onLoadUrlEnd\n");
+}
+
+void onUrlChanged(mbWebView webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward) {
+    printf("onTitleChanged, canGoBack: %d, canGoForward: %d, url: %s\n", canGoBack, canGoForward, url);
+}
+
+void MB_CALL_TYPE onTitleChanged(mbWebView webView, void* param, const utf8* title) {
+    std::wstring titleString;
+    if (title) { titleString = utf8ToUtf16(title); }
+    wprintf(L"onTitleChanged: %s\n", titleString.c_str());
 }
 
 /////////////////////////////////////////
@@ -107,13 +167,24 @@ int main() {
 	// 页面DOM发出ready事件时触发此回调
     mbOnDocumentReady(mbView, onDocumentReadyCallback, NULL);
     
+    mbOnLoadingFinish(mbView, onLoadingFinish, NULL);
+
     // 注册js通知native的回调。配合mbResponseQuery接口，用于实现js调用C++
     mbOnJsQuery(mbView, onJsQueryCallback, NULL);
     
     mbOnLoadUrlBegin(mbView, onLoadUrlBegin, NULL);
+    mbOnLoadUrlEnd(mbView, onLoadUrlEnd, NULL);
+
+    mbOnURLChanged(mbView, onUrlChanged, NULL);
+
+    mbOnTitleChanged(mbView, onTitleChanged, NULL);
+
+    // 不打开新窗口
+	mbSetNavigationToNewWindowEnable(mbView, FALSE); 
 
 
 	// 居中显示窗口
+    mbResize(mbView, 800, 600);
     mbShowWindow(mbView, TRUE);
     mbMoveToCenter(mbView);
     
