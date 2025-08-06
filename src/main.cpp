@@ -62,7 +62,7 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
     mbStringPtr ptr = mbGetSourceSync(mbView);
 	auto len = mbGetStringLen(ptr);
     auto html = mbGetString(ptr);
-	printf("Document ready, HTML length: %zu\n", len);
+	printf("Document ready, HTML length: %zu %d\n", len, strlen(html));
     mbDeleteString(ptr);
 
 	// 执行一段JS测试代码
