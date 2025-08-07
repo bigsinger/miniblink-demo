@@ -45,3 +45,6 @@ Archive*
 *.out
 *.app
 bin/cookies.dat
+
+
+!lib/*.lib

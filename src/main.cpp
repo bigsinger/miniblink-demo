@@ -72,12 +72,14 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
 	// 执行一段JS测试代码
     mbRunJs(mbView, mbWebFrameGetMainFrame(mbView), 
         R"(
+        function onNativeResponse(customMsg, response) {
+            alert('mbQuery:' + response);
+        };
+
         try {
             console.log('hello js');
-            var ret = window.mbQuery(0x123456, "I am in js context");
+            var ret = window.mbQuery(123456, "I am in js context", onNativeResponse);
             alert(ret);
-            //return window.onNativeRunjs('I am runjs');
-            //console.log2('');
         } catch(e){
             alert(e);
         }
@@ -93,7 +95,7 @@ void MB_CALL_TYPE onLoadingFinish(mbWebView webView, void* param, mbWebFrameHand
 
 void MB_CALL_TYPE onJsQueryCallback(mbWebView webView, void* param, mbJsExecState es, int64_t queryId, int customMsg, const utf8* request) {
     printf("onJsQueryCallback\n");
-    if (customMsg== 0x123456) {
+    if (customMsg== 123456) {
         mbResponseQuery(webView, queryId, customMsg, "I am response");
     }
 }
