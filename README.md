@@ -48,7 +48,20 @@ _CRT_SECURE_NO_WARNINGS
 fatal error LNK1120: 6 个无法解析的外部命令
 ```
 
-未完待续。。。
+网上说是去掉对ares的依赖即可，但是去掉了编译选项：`CURLRES_ARES=1` 重新编译链接也不行。然后开启下`CURL_DISABLE_ARES`也不行。最后规避那个curl库，自己下载对应的[7.61.1](https://curl.se/download/archeology/curl-7.61.1.zip)版本curl自行编译是可以的。
+
+新的链接问题：
+nodejs又链接不到ares相关的符号了。
+
+解决办法：去掉对nodejs.lib的链接，同时还要移除两个文件：nodeblink.h 、nodeblink.cpp，其实在打开nodeblink.cpp的时候发现了开头的一个开关：
+
+```c
+#if 1 // ENABLE_NODEJS
+```
+
+把1改为0即可。
+
+最后成功链接通过。
 
 ## 注册Native函数并实现同步调用
 
