@@ -72,6 +72,37 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
 	// 执行一段JS测试代码
     mbRunJs(mbView, mbWebFrameGetMainFrame(mbView), 
         R"(
+        let __cpp_call_id = 0;				// 全局唯一请求 ID
+		const __cpp_callbacks = new Map();	// 存储 Promise 的 resolve
+
+		// JS 发起调用 C++
+		function callCpp(method, args) {
+			return new Promise((resolve) => {
+				const id = ++__cpp_call_id;
+				__cpp_callbacks.set(id, resolve);
+
+				// 向 C++ 发送消息
+				const msg = { id, method, args };
+				chrome.webview.postMessage(JSON.stringify(msg));
+			});
+		}
+
+		// 接收来自 C++ 的返回值
+		window.chrome.webview.addEventListener('message', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				const { id, result } = data;
+				if (__cpp_callbacks.has(id)) {
+					const resolve = __cpp_callbacks.get(id);
+					resolve(result);	// 调用
+					__cpp_callbacks.delete(id);
+				}
+			} catch (err) {
+				alert('接收 C++ 消息失败:', err);
+			}
+		});
+
+
         function onNativeResponse(customMsg, response) {
             alert('mbQuery:' + response);
         };
