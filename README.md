@@ -49,6 +49,15 @@ fatal error LNK1120: 6 个无法解析的外部命令
 ```
 
 网上说是去掉对ares的依赖即可，但是去掉了编译选项：`CURLRES_ARES=1` 重新编译链接也不行。然后开启下`CURL_DISABLE_ARES`也不行。最后规避那个curl库，自己下载对应的[7.61.1](https://curl.se/download/archeology/curl-7.61.1.zip)版本curl自行编译是可以的。
+查看CURL的版本：`#define LIBCURL_VERSION "7.61.1"`
+
+```
+\curl-7.61.1\winbuild>nmake /f Makefile.vc mode=static VC=17   WITH_CARES= ENABLE_SSPI=yes ENABLE_IDN=no DEBUG=no MACHINE=x86
+```
+编译的静态库：
+curl-7.61.1/builds/libcurl-vc17-x86-release-static-ipv6-sspi-winssl/lib/libcurl_a.lib
+
+
 
 新的链接问题：
 nodejs又链接不到ares相关的符号了。
