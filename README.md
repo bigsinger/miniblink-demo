@@ -48,16 +48,16 @@ _CRT_SECURE_NO_WARNINGS
 fatal error LNK1120: 6 个无法解析的外部命令
 ```
 
-网上说是去掉对ares的依赖即可，但是去掉了编译选项：`CURLRES_ARES=1` 重新编译链接也不行。然后开启下`CURL_DISABLE_ARES`也不行。最后规避那个curl库，自己下载对应的[7.61.1](https://curl.se/download/archeology/curl-7.61.1.zip)版本curl自行编译是可以的。
-查看CURL的版本：`#define LIBCURL_VERSION "7.61.1"`
+网上说是去掉对ares的依赖即可，但是去掉了编译选项：`CURLRES_ARES=1` 重新编译链接也不行。然后开启下`CURL_DISABLE_ARES`也不行。最后规避那个curl库，自己下载对应的[7.61.1](https://curl.se/download/archeology/curl-7.61.1.zip)版本curl（查看CURL的版本：`#define LIBCURL_VERSION "7.61.1"`）自行编译是可以的，参加后面章节的方法编译curl。
 
-```
+记录下使用的编译命令：
+
+```bash
 \curl-7.61.1\winbuild>nmake /f Makefile.vc mode=static VC=17   WITH_CARES= ENABLE_SSPI=yes ENABLE_IDN=no DEBUG=no MACHINE=x86
 ```
+
 编译的静态库：
 curl-7.61.1/builds/libcurl-vc17-x86-release-static-ipv6-sspi-winssl/lib/libcurl_a.lib
-
-
 
 新的链接问题：
 nodejs又链接不到ares相关的符号了。
@@ -71,6 +71,28 @@ nodejs又链接不到ares相关的符号了。
 把1改为0即可。
 
 最后成功链接通过。
+
+### 编译curl
+
+1. 准备源码<https://curl.se/download/archeology/curl-7.61.1.zip> ,解压到 D:\src\curl-7.61.1
+
+2. 打开“x64 Native Tools Command Prompt for VS 2017/2019/2022”
+（需要 32 位就把命令换成 x86）,进入 winbuild 目录
+cd /d D:\src\curl-7.61.1\winbuild
+
+3. 一行命令编译（关键：WITH_CARES= 留空即关闭 c-ares）
+
+```bash
+nmake /f Makefile.vc mode=static VC=17 WITH_SSL=static WITH_ZLIB=static WITH_CARES= ENABLE_SSPI=yes ENABLE_IDN=no DEBUG=no MACHINE=x64
+```
+
+说明：
+
+- mode=static 生成静态库(.lib)
+- VC=15 对应 VS2017（VS2017用15，VS2019 用 16，VS2022 用 17）
+- 不用zlib，可以把`WITH_ZLIB`去掉或者设置为：`WITH_ZLIB=`
+- 如需调试版设置为：`DEBUG=yes`
+- 32 位设置：`MACHINE=x86`
 
 ## 注册Native函数并实现同步调用
 
