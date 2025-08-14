@@ -63,11 +63,15 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
 	printf("onDocumentReadyCallback\n");
 
 	// 这里可以获取页面的HTML内容
-    mbStringPtr ptr = mbGetSourceSync(mbView);
-	auto len = mbGetStringLen(ptr);
-    auto html = mbGetString(ptr);
-	printf("Document ready, HTML length: %zu %zu\n", len, strlen(html));
-    mbDeleteString(ptr);
+    if (mbGetSourceSync) {
+        mbStringPtr ptr = mbGetSourceSync(mbView);
+        auto len = mbGetStringLen(ptr);
+        auto html = mbGetString(ptr);
+        printf("Document ready, HTML length: %zu %zu\n", len, strlen(html));
+        mbDeleteString(ptr);
+    } else {
+        printf("mbGetSourceSync is null\n");
+    }
 
 	// 执行一段JS测试代码
     mbRunJs(mbView, mbWebFrameGetMainFrame(mbView), 
@@ -141,7 +145,7 @@ void MB_CALL_TYPE onLoadUrlEnd
     printf("onLoadUrlEnd\n");
 }
 
-void onUrlChanged(mbWebView webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward) {
+void MB_CALL_TYPE onUrlChanged(mbWebView webView, void* param, const utf8* url, BOOL canGoBack, BOOL canGoForward) {
     printf("onTitleChanged, canGoBack: %d, canGoForward: %d, url: %s\n", canGoBack, canGoForward, url);
 }
 
@@ -179,7 +183,7 @@ int main() {
     mbOnLoadUrlBegin(mbView, onLoadUrlBegin, NULL);
     mbOnLoadUrlEnd(mbView, onLoadUrlEnd, NULL);
 
-    mbOnURLChanged(mbView, onUrlChanged, NULL);
+    mbOnURLChanged(mbView, onUrlChanged, NULL); 
 
     mbOnTitleChanged(mbView, onTitleChanged, NULL);
 
