@@ -58,6 +58,10 @@ void MB_CALL_TYPE onRunJsCallback(mbWebView webView, void* param, mbJsExecState 
 	printf("%s\n", str);
 }
 
+void MB_CALL_TYPE onGetCookieCallback(mbWebView webView, void* param, MbAsynRequestState state, const utf8* cookie) {
+    printf("cookies: %s\n", cookie);
+}
+
 // 页面DOM发出ready事件时触发此回调
 void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebFrameHandle frameId) {
 	printf("onDocumentReadyCallback\n");
@@ -72,6 +76,10 @@ void MB_CALL_TYPE onDocumentReadyCallback(mbWebView webView, void* param, mbWebF
     } else {
         printf("mbGetSourceSync is null\n");
     }
+
+	// 获取Cookie
+	printf("get cookies...\n");
+    mbGetCookie(mbView, onGetCookieCallback, nullptr);
 
 	// 执行一段JS测试代码
     mbRunJs(mbView, mbWebFrameGetMainFrame(mbView), 
@@ -150,11 +158,18 @@ void MB_CALL_TYPE onUrlChanged(mbWebView webView, void* param, const utf8* url, 
 }
 
 void MB_CALL_TYPE onTitleChanged(mbWebView webView, void* param, const utf8* title) {
-    std::wstring titleString;
-    if (title) { titleString = utf8ToUtf16(title); }
-    wprintf(L"onTitleChanged: %s\n", titleString.c_str());
+    std::string s;
+    if (title) { 
+        std::wstring titleW = utf8ToUtf16(title);
+        s = utf16ToAnsi(titleW.c_str());
+    }
+    printf("onTitleChanged: %s\n", s.c_str());
 }
 
+BOOL MB_CALL_TYPE onDownloadCallback(mbWebView webView, void* param, mbWebFrameHandle frameId, const char* url, void* downloadJob) {
+	printf("onDownloadCallback, url: %s\n", url);
+    return TRUE;
+}
 /////////////////////////////////////////
 
 
@@ -189,6 +204,16 @@ int main() {
 
     // 不打开新窗口
 	mbSetNavigationToNewWindowEnable(mbView, FALSE); 
+
+    mbSetContextMenuEnabled(mbView, TRUE);
+
+	mbOnDownload(mbView, onDownloadCallback, NULL);
+
+    mbOnConsole(mbView, [](mbWebView webView, void* param, mbConsoleLevel level, const utf8* message, const utf8* sourceName, unsigned sourceLine, const utf8* stackTrace) {
+        std::wstring msgW = utf8ToUtf16(message);
+		std::string msg = utf16ToAnsi(msgW.c_str());
+        printf("console.log[%d]: %s\n", level, msg.c_str());
+	}, NULL);
 
 
 	// 居中显示窗口
